@@ -1,4 +1,4 @@
-git i# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1
 FROM golang:1.21-alpine AS builder
 WORKDIR /app
 COPY . .
