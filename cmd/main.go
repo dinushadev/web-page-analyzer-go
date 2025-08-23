@@ -22,9 +22,6 @@ func main() {
 
 	mux := api.NewRouter()
 
-	// Metrics and pprof endpoints
-	mux.Handle("/metrics", metrics.Handler())
-	mux.Handle("/debug/pprof/", http.DefaultServeMux)
 
 	srv := &http.Server{
 		Addr:    ":8080",

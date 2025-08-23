@@ -2,7 +2,10 @@ module test-project-go
 
 go 1.23.0
 
-require github.com/prometheus/client_golang v1.23.0
+require (
+	github.com/prometheus/client_golang v1.23.0
+	golang.org/x/net v0.40.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
