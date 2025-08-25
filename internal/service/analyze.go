@@ -13,13 +13,15 @@ import (
 
 var ErrUnreachable = errors.New("URL is unreachable")
 
+// Refactored AnalyzePage
 func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 	parsed, err := url.ParseRequestURI(targetURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return nil, 0, errors.New("invalid URL")
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	clientFactory := &DefaultHTTPClientFactory{}
+	client := clientFactory.NewClient()
 	resp, err := client.Get(targetURL)
 	if err != nil {
 		return nil, 0, ErrUnreachable
@@ -28,19 +30,26 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return nil, resp.StatusCode, errors.New("HTTP error: " + resp.Status)
 	}
-
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
 		return nil, 0, errors.New("failed to parse HTML")
 	}
 
+	// Compose strategies
+	strategies := []AnalyzerStrategy{
+		&HTMLVersionStrategy{},
+		&TitleStrategy{},
+		&HeadingsStrategy{},
+		&LinksStrategy{LinkChecker: &DefaultLinkChecker{Client: client}},
+		&LoginFormStrategy{},
+	}
 	result := &model.AnalyzeResult{}
-	result.HTMLVersion = detectHTMLVersion(doc)
-	result.Title = extractTitle(doc)
-	result.Headings = countHeadings(doc)
-	internal, external, inaccessible := countLinks(doc, parsed)
-	result.Links = model.LinkStats{Internal: internal, External: external, Inaccessible: inaccessible}
-	result.LoginForm = hasLoginForm(doc)
+	for _, s := range strategies {
+		err := s.Analyze(doc, parsed, result)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
 	return result, 0, nil
 }
 
@@ -94,7 +103,7 @@ func countHeadings(n *html.Node) []model.HeadingCount {
 	return result
 }
 
-func countLinks(n *html.Node, base *url.URL) (internal, external, inaccessible int) {
+func countLinks(n *html.Node, base *url.URL, checker LinkChecker) (internal, external, inaccessible int) {
 	var links []string
 	var f func(*html.Node)
 	f = func(n *html.Node) {
@@ -124,7 +133,7 @@ func countLinks(n *html.Node, base *url.URL) (internal, external, inaccessible i
 		} else {
 			external++
 		}
-		if !isLinkAccessible(abs.String()) {
+		if !checker.IsAccessible(abs.String()) {
 			inaccessible++
 		}
 	}

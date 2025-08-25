@@ -58,6 +58,10 @@ func TestAnalyzePage_Unreachable(t *testing.T) {
 	}
 }
 
+// Use a mock LinkChecker that always returns true (all links accessible)
+type mockChecker struct{}
+func (m *mockChecker) IsAccessible(link string) bool { return true }
+
 func TestCountLinks(t *testing.T) {
 	h := `<!DOCTYPE html><html><body>
 	<a href="/internal">Internal</a>
@@ -66,7 +70,7 @@ func TestCountLinks(t *testing.T) {
 	</body></html>`
 	base, _ := http.NewRequest("GET", "http://localhost", nil)
 	doc, _ := html.Parse(strings.NewReader(h))
-	internal, external, _ := countLinks(doc, base.URL)
+	internal, external, _ := countLinks(doc, base.URL, &mockChecker{})
 	if internal != 1 || external != 1 {
 		t.Errorf("expected 1 internal and 1 external, got %d internal, %d external", internal, external)
 	}

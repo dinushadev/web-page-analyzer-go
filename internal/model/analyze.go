@@ -11,6 +11,8 @@ type LinkStats struct {
 	Inaccessible int `json:"inaccessible"`
 }
 
+// AnalyzeResult is populated by AnalyzerStrategy implementations
+// and returned by AnalyzePage.
 type AnalyzeResult struct {
 	HTMLVersion string        `json:"html_version"`
 	Title       string        `json:"title"`
