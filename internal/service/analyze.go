@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"sync"
 
 	"golang.org/x/net/html"
 	"test-project-go/internal/model"
@@ -13,7 +14,24 @@ import (
 
 var ErrUnreachable = errors.New("URL is unreachable")
 
-// Refactored AnalyzePage
+func mergeAnalyzeResult(main, partial *model.AnalyzeResult) {
+	if partial.HTMLVersion != "" {
+		main.HTMLVersion = partial.HTMLVersion
+	}
+	if partial.Title != "" {
+		main.Title = partial.Title
+	}
+	if len(partial.Headings) > 0 {
+		main.Headings = partial.Headings
+	}
+	if partial.Links.Internal != 0 || partial.Links.External != 0 || partial.Links.Inaccessible != 0 {
+		main.Links = partial.Links
+	}
+	if partial.LoginForm {
+		main.LoginForm = true
+	}
+}
+
 func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 	parsed, err := url.ParseRequestURI(targetURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
@@ -35,7 +53,6 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 		return nil, 0, errors.New("failed to parse HTML")
 	}
 
-	// Compose strategies
 	strategies := []AnalyzerStrategy{
 		&HTMLVersionStrategy{},
 		&TitleStrategy{},
@@ -44,11 +61,28 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 		&LoginFormStrategy{},
 	}
 	result := &model.AnalyzeResult{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	errChan := make(chan error, len(strategies))
+
 	for _, s := range strategies {
-		err := s.Analyze(doc, parsed, result)
-		if err != nil {
-			return nil, 0, err
-		}
+		wg.Add(1)
+		go func(strategy AnalyzerStrategy) {
+			defer wg.Done()
+			partial := &model.AnalyzeResult{}
+			if err := strategy.Analyze(doc, parsed, partial); err != nil {
+				errChan <- err
+				return
+			}
+			mu.Lock()
+			mergeAnalyzeResult(result, partial)
+			mu.Unlock()
+		}(s)
+	}
+	wg.Wait()
+	close(errChan)
+	if len(errChan) > 0 {
+		return nil, 0, <-errChan
 	}
 	return result, 0, nil
 }
