@@ -1,7 +1,7 @@
 # test-project-go
 
 ## Overview
-Enterprise-grade Go API boilerplate with layered monolith architecture, observability, and best practices. No database required.
+A simple web page analyzer API built with Go. This API accepts a URL and returns information about the web page, including its HTML version, title, heading structure, link statistics.
 
 ## Features
 - Layered architecture (API, Service, Utilities)
