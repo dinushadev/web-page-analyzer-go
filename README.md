@@ -47,5 +47,3 @@ go test ./...
 - `internal/util/` — Utilities (logging)
 - `internal/metrics/` — Metrics setup
 
-## License
-MIT

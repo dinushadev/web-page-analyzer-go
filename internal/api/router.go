@@ -6,6 +6,8 @@ import (
 	"test-project-go/internal/middleware"
 	"test-project-go/internal/metrics"
 	_ "net/http/pprof"
+	"github.com/swaggo/http-swagger"
+	_ "test-project-go/docs"
 )
 
 func NewRouter() http.Handler {
@@ -14,5 +16,6 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/analyze", AnalyzeHandler)
 	mux.Handle("/metrics", metrics.Handler())
 	mux.Handle("/debug/pprof/", http.DefaultServeMux)
+	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 	return middleware.Logging(mux)
 }

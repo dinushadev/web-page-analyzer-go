@@ -15,6 +15,17 @@ type errorResponse struct {
 	StatusCode int    `json:"status_code"`
 }
 
+// AnalyzeHandler handles the analysis of a web page.
+// @Summary Analyze a web page
+// @Description Analyzes the given URL and returns HTML version, title, headings, link stats, and login form presence.
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Param analyzeRequest body analyzeRequest true "URL to analyze"
+// @Success 200 {object} model.AnalyzeResult
+// @Failure 400 {object} errorResponse
+// @Failure 502 {object} errorResponse
+// @Router /analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

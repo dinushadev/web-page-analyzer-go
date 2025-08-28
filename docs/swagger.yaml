@@ -1,0 +1,79 @@
+definitions:
+  api.analyzeRequest:
+    properties:
+      url:
+        type: string
+    type: object
+  api.errorResponse:
+    properties:
+      error:
+        type: string
+      status_code:
+        type: integer
+    type: object
+  model.AnalyzeResult:
+    properties:
+      headings:
+        items:
+          $ref: '#/definitions/model.HeadingCount'
+        type: array
+      html_version:
+        type: string
+      links:
+        $ref: '#/definitions/model.LinkStats'
+      login_form:
+        type: boolean
+      title:
+        type: string
+    type: object
+  model.HeadingCount:
+    properties:
+      count:
+        type: integer
+      level:
+        type: integer
+    type: object
+  model.LinkStats:
+    properties:
+      external:
+        type: integer
+      inaccessible:
+        type: integer
+      internal:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /analyze:
+    post:
+      consumes:
+      - application/json
+      description: Analyzes the given URL and returns HTML version, title, headings,
+        link stats, and login form presence.
+      parameters:
+      - description: URL to analyze
+        in: body
+        name: analyzeRequest
+        required: true
+        schema:
+          $ref: '#/definitions/api.analyzeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AnalyzeResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+      summary: Analyze a web page
+      tags:
+      - analyze
+swagger: "2.0"
