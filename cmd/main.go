@@ -23,7 +23,7 @@ func main() {
 	mux := api.NewRouter()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8081",
 		Handler: mux,
 	}
 

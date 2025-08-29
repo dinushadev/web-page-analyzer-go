@@ -1,8 +1,11 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
@@ -13,7 +16,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-var ErrUnreachable = errors.New("URL is unreachable")
+var ErrUnreachable = errors.New("url is unreachable")
+var ErrInvalidURL = errors.New("invalid url")
+var ErrUpstream = errors.New("upstream http error")
+var ErrParseHTML = errors.New("failed to parse html")
 
 func logInfo(message string, args ...any) {
 	if util.Logger != nil {
@@ -39,34 +45,38 @@ func mergeAnalyzeResult(main, partial *model.AnalyzeResult) {
 	}
 }
 
-func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
+func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, error) {
 	logInfo("analyze.start", slog.String("url", targetURL))
 	parsed, err := url.ParseRequestURI(targetURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		logInfo("analyze.invalid_url", slog.String("url", targetURL))
-		return nil, 0, errors.New("invalid URL")
+		return nil, fmt.Errorf("parse url %q: %w", targetURL, ErrInvalidURL)
 	}
 	logInfo("analyze.url_parsed", slog.String("host", parsed.Host))
 
 	clientFactory := &DefaultHTTPClientFactory{}
 	client := clientFactory.NewClient()
 	logInfo("http.fetch", slog.String("url", targetURL))
-	resp, err := client.Get(targetURL)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if reqErr != nil {
+		return nil, fmt.Errorf("build request: %w", reqErr)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		logInfo("http.error", slog.String("url", targetURL), slog.String("error", ErrUnreachable.Error()))
-		return nil, 0, ErrUnreachable
+		return nil, fmt.Errorf("get %s: %w", targetURL, ErrUnreachable)
 	}
 	defer resp.Body.Close()
 	logInfo("http.response", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logInfo("http.non_2xx", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
-		return nil, resp.StatusCode, errors.New("HTTP error: " + resp.Status)
+		return nil, fmt.Errorf("upstream http %d %s: %w", resp.StatusCode, resp.Status, ErrUpstream)
 	}
 	logInfo("html.parse.start")
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		logInfo("html.parse.error", slog.String("error", "failed to parse HTML"))
-		return nil, 0, errors.New("failed to parse HTML")
+		logInfo("html.parse.error", slog.String("error", ErrParseHTML.Error()))
+		return nil, fmt.Errorf("parse html: %w", ErrParseHTML)
 	}
 	logInfo("html.parse.ok")
 
@@ -112,7 +122,7 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 	close(errChan)
 	if len(errChan) > 0 {
 		logInfo("analyze.error", slog.String("error", "strategy error"))
-		return nil, 0, <-errChan
+		return nil, fmt.Errorf("strategy error: %w", <-errChan)
 	}
 	logInfo("analyze.done",
 		slog.String("html_version", result.HTMLVersion),
@@ -122,7 +132,7 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 		slog.Int("links_external", result.Links.External),
 		slog.Int("links_inaccessible", result.Links.Inaccessible),
 	)
-	return result, 0, nil
+	return result, nil
 }
 
 func detectHTMLVersion(n *html.Node) string {

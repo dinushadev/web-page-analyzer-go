@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -50,7 +51,7 @@ func TestHasLoginForm(t *testing.T) {
 }
 
 func TestAnalyzePage_InvalidURL(t *testing.T) {
-	_, _, err := AnalyzePage(":bad-url:")
+	_, err := AnalyzePage(context.Background(), ":bad-url:")
 	if err == nil {
 		t.Error("expected error for invalid URL")
 	}
@@ -58,7 +59,7 @@ func TestAnalyzePage_InvalidURL(t *testing.T) {
 
 func TestAnalyzePage_Unreachable(t *testing.T) {
 	// Use a non-routable IP to simulate unreachable
-	_, _, err := AnalyzePage("http://10.255.255.1")
+	_, err := AnalyzePage(context.Background(), "http://10.255.255.1")
 	if err == nil {
 		t.Error("expected unreachable error")
 	}

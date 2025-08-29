@@ -2,9 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"test-project-go/internal/service"
 )
+
+var analyzePageFunc = service.AnalyzePage
 
 type analyzeRequest struct {
 	URL string `json:"url"`
@@ -33,16 +36,21 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req analyzeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(errorResponse{Error: "Invalid request body", StatusCode: 400})
+		json.NewEncoder(w).Encode(errorResponse{Error: "Invalid request body", StatusCode: http.StatusBadRequest})
 		return
 	}
-	result, status, err := service.AnalyzePage(req.URL)
+	result, err := analyzePageFunc(r.Context(), req.URL)
 	if err != nil {
-		code := status
-		if code == 0 {
+		code := http.StatusBadGateway
+		switch {
+		case errors.Is(err, service.ErrInvalidURL):
+			code = http.StatusBadRequest
+		case errors.Is(err, service.ErrUnreachable), errors.Is(err, service.ErrUpstream):
 			code = http.StatusBadGateway
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
 		json.NewEncoder(w).Encode(errorResponse{Error: err.Error(), StatusCode: code})
 		return
