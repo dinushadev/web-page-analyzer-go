@@ -1,49 +1,91 @@
 # test-project-go
 
 ## Overview
-A simple web page analyzer API built with Go. This API accepts a URL and returns information about the web page, including its HTML version, title, heading structure, link statistics.
+A simple web page analyzer built with Go. It exposes a REST API and a minimal web UI that accepts a URL and returns:
+- HTML version
+- Page title
+- Heading counts (h1–h6)
+- Link statistics (internal, external, inaccessible)
+- Presence of a login form
 
-## Features
-- Layered architecture (API, Service, Utilities)
-- Health check endpoint
-- Prometheus metrics (`/metrics`)
-- pprof profiling (`/debug/pprof/`)
-- Structured logging (slog)
-- Graceful shutdown
-- Multi-stage Dockerfile
+The app also provides health, metrics, profiling, structured logging, and graceful shutdown.
 
-## Getting Started
+## Technology Stack
+- **Backend**: Go `net/http`, `golang.org/x/net/html` (HTML parsing), structured logging via `log/slog`, graceful shutdown, concurrent analysis with goroutines.
+- **Frontend**: Static page served from `web/` using React 18 (UMD) and Tailwind CSS via CDN.
+- **API Docs**: Swagger (served at runtime) using `swaggo/http-swagger` and static specs in `docs/swagger.yaml` and `docs/swagger.json`.
+- **DevOps/Observability**: Docker multi-stage build, Prometheus metrics (`promhttp`), pprof (`/debug/pprof/`).
 
-### Prerequisites
-- Go 1.21+
+## URLs (local)
+- **Backend base URL (native run)**: `http://localhost:8080`
+- **Frontend UI**: `http://localhost:8080/`
+- **Health**: `http://localhost:8080/health`
+- **Metrics (Prometheus format)**: `http://localhost:8080/metrics`
+- **Profiling (pprof)**: `http://localhost:8080/debug/pprof/`
+- **API Docs (Swagger UI)**: `http://localhost:8080/swagger/` (or `.../swagger/index.html`)
+
+Docker run note: the server listens on port 8080 inside the container. Map to any host port as needed, e.g. `-p 8080:8080` to access at `http://localhost:8080`.
+
+## Prerequisites
+- Go 1.23+
 - Docker (optional)
 
-### Setup
+## Setup and Run
+1) Native run
 ```sh
 go mod tidy
 go run ./cmd/main.go
+# App at http://localhost:8080
 ```
 
-### Build & Run with Docker
+2) Docker
 ```sh
 docker build -t test-project-go .
-docker run -p 8080:8080 test-project-go
+docker run --rm -p 8080:8080 test-project-go
+# App at http://localhost:8080
 ```
 
-## API Endpoints
-- `GET /health` — Health check
-- `GET /metrics` — Prometheus metrics
-- `GET /debug/pprof/` — pprof profiling
+## API Usage
+- `POST /analyze`
+  - Request body:
+    ```json
+    { "url": "https://simplewebapp.com" }
+    ```
+  - Success response (200):
+    ```json
+    {
+      "html_version": "HTML5",
+      "title": "Example Domain",
+      "headings": [ { "level": 1, "count": 1 }, ... ],
+      "links": { "internal": 3, "external": 2, "inaccessible": 1 },
+      "login_form": false
+    }
+    ```
+  - Error responses: 400 (invalid input), 502 (upstream/unreachable)
 
-## Testing
+- Supporting endpoints
+  - `GET /health` — Health check
+  - `GET /metrics` — Prometheus metrics
+  - `GET /debug/pprof/` — Profiling
+  - `GET /swagger/` — Swagger UI
+
+### cURL examples
 ```sh
-go test ./...
+curl -s http://localhost:8080/health
+
+curl -s -X POST http://localhost:8080/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://simplewebapp.com"}'
 ```
 
 ## Project Structure
 - `cmd/` — Main entrypoint
-- `internal/api/` — HTTP handlers
-- `internal/service/` — Business logic
-- `internal/util/` — Utilities (logging)
-- `internal/metrics/` — Metrics setup
+- `internal/api/` — HTTP handlers and router
+- `internal/service/` — Analysis strategies and business logic
+- `internal/model/` — DTOs / response models
+- `internal/middleware/` — Request logging middleware
+- `internal/metrics/` — Metrics integration
+- `internal/util/` — Logging setup
+- `docs/` — Swagger specs and generated docs
+- `web/` — Static frontend
 
