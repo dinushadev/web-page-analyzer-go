@@ -49,6 +49,8 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 			code = http.StatusBadRequest
 		case errors.Is(err, analyzer.ErrUnreachable), errors.Is(err, analyzer.ErrUpstream):
 			code = http.StatusBadGateway
+		case errors.Is(err, analyzer.ErrTimeout):
+			code = http.StatusGatewayTimeout
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)

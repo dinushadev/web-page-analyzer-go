@@ -22,12 +22,12 @@ func main() {
 	mux := api.NewRouter()
 
 	srv := &http.Server{
-		Addr:              ":8080",
+		Addr:              ":8081",
 		Handler:           mux,
-		ReadTimeout:       10 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadTimeout:       150 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}
 

@@ -2,8 +2,10 @@ package analyzer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -30,8 +32,19 @@ func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, e
 		logError("http.request_build_failed", slog.String("url", targetURL), slog.String("error", reqErr.Error()))
 		return nil, fmt.Errorf("build request: %w", reqErr)
 	}
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
+		// Detect timeout via context or net.Error
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			logError("http.timeout", slog.String("url", targetURL))
+			return nil, fmt.Errorf("get %s: %w", targetURL, ErrTimeout)
+		}
+		var nerr net.Error
+		if errors.As(err, &nerr) && nerr.Timeout() {
+			logError("http.timeout", slog.String("url", targetURL))
+			return nil, fmt.Errorf("get %s: %w", targetURL, ErrTimeout)
+		}
 		logError("http.error", slog.String("url", targetURL), slog.String("error", ErrUnreachable.Error()))
 		return nil, fmt.Errorf("get %s: %w", targetURL, ErrUnreachable)
 	}
