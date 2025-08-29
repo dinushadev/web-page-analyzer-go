@@ -7,5 +7,6 @@ RUN go mod tidy && go build -o server ./cmd/main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/web ./web
 EXPOSE 8080
 ENTRYPOINT ["./server"]

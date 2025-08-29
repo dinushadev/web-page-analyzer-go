@@ -17,5 +17,7 @@ func NewRouter() http.Handler {
 	mux.Handle("/metrics", metrics.Handler())
 	mux.Handle("/debug/pprof/", http.DefaultServeMux)
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+	// Serve static files from the web directory at the root path
+	mux.Handle("/", http.FileServer(http.Dir("web")))
 	return middleware.Logging(mux)
 }

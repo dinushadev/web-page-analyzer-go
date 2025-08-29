@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Analyze Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div id="root" class="min-h-screen p-6"></div>
+    <script>
+      const { useState } = React;
+
+      function App() {
+        const [url, setUrl] = useState("");
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [data, setData] = useState(null);
+
+        async function handleSubmit(e) {
+          e.preventDefault();
+          setError("");
+          setData(null);
+          if (!url) {
+            setError("Please enter a URL");
+            return;
+          }
+          setLoading(true);
+          try {
+            const res = await fetch("/analyze", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url })
+            });
+            const json = await res.json();
+            if (!res.ok) {
+              throw new Error(json.error || "Request failed");
+            }
+            setData(json);
+          } catch (err) {
+            setError(err.message || "Something went wrong");
+          } finally {
+            setLoading(false);
+          }
+        }
+
+        return (
+          React.createElement("div", { className: "max-w-3xl mx-auto" },
+            React.createElement("h1", { className: "text-2xl font-semibold mb-4" }, "Web Page Analyzer"),
+            React.createElement("form", { onSubmit: handleSubmit, className: "flex gap-2 mb-6" },
+              React.createElement("input", {
+                type: "url",
+                placeholder: "https://example.com",
+                value: url,
+                onChange: (e) => setUrl(e.target.value),
+                className: "flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200",
+                required: true
+              }),
+              React.createElement("button", {
+                type: "submit",
+                className: "px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-50",
+                disabled: loading
+              }, loading ? "Analyzing..." : "Analyze")
+            ),
+            error && React.createElement("div", { className: "mb-4 text-red-600" }, error),
+            data && React.createElement(ResultTable, { result: data })
+          )
+        );
+      }
+
+      function ResultTable({ result }) {
+        const headings = Array.isArray(result.headings) ? result.headings : [];
+        return (
+          React.createElement("div", { className: "bg-white shadow rounded-md overflow-hidden" },
+            React.createElement("div", { className: "p-4 border-b" },
+              React.createElement("h2", { className: "font-medium" }, "Result")
+            ),
+            React.createElement("div", { className: "p-4" },
+              React.createElement("div", { className: "overflow-x-auto" },
+                React.createElement("table", { className: "min-w-full text-sm" },
+                  React.createElement("tbody", null,
+                    Row("HTML Version", result.html_version || ""),
+                    Row("Title", result.title || ""),
+                    Row("Login Form", result.login_form ? "Yes" : "No"),
+                    Row("Links (internal)", String(result?.links?.internal ?? 0)),
+                    Row("Links (external)", String(result?.links?.external ?? 0)),
+                    Row("Links (inaccessible)", String(result?.links?.inaccessible ?? 0))
+                  )
+                )
+              ),
+              headings.length > 0 && React.createElement("div", { className: "mt-6" },
+                React.createElement("h3", { className: "font-medium mb-2" }, "Headings"),
+                React.createElement("table", { className: "min-w-full text-sm" },
+                  React.createElement("thead", null,
+                    React.createElement("tr", { className: "text-left" },
+                      React.createElement("th", { className: "px-3 py-2 border-b" }, "Level"),
+                      React.createElement("th", { className: "px-3 py-2 border-b" }, "Count")
+                    )
+                  ),
+                  React.createElement("tbody", null,
+                    headings.map((h, idx) => (
+                      React.createElement("tr", { key: idx },
+                        React.createElement("td", { className: "px-3 py-2 border-b" }, `h${h.level}`),
+                        React.createElement("td", { className: "px-3 py-2 border-b" }, h.count)
+                      )
+                    ))
+                  )
+                )
+              )
+            )
+          )
+        );
+      }
+
+      function Row(label, value) {
+        return React.createElement("tr", null,
+          React.createElement("td", { className: "px-3 py-2 border-b font-medium w-48" }, label),
+          React.createElement("td", { className: "px-3 py-2 border-b" }, value)
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+    </script>
+  </body>
+  </html>
+
+
