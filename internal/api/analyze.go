@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"test-project-go/internal/service"
+	"test-project-go/internal/analyzer"
 )
 
-var analyzePageFunc = service.AnalyzePage
+var analyzePageFunc = analyzer.AnalyzePage
 
 type analyzeRequest struct {
 	URL string `json:"url"`
@@ -45,9 +45,9 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code := http.StatusBadGateway
 		switch {
-		case errors.Is(err, service.ErrInvalidURL):
+		case errors.Is(err, analyzer.ErrInvalidURL):
 			code = http.StatusBadRequest
-		case errors.Is(err, service.ErrUnreachable), errors.Is(err, service.ErrUpstream):
+		case errors.Is(err, analyzer.ErrUnreachable), errors.Is(err, analyzer.ErrUpstream):
 			code = http.StatusBadGateway
 		}
 		w.Header().Set("Content-Type", "application/json")

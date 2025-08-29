@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"test-project-go/internal/analyzer"
 	"test-project-go/internal/model"
-	"test-project-go/internal/service"
 )
 
 func TestAnalyzeHandler_MethodNotAllowed(t *testing.T) {
@@ -34,7 +34,7 @@ func TestAnalyzeHandler_InvalidURL(t *testing.T) {
 	old := analyzePageFunc
 	defer func() { analyzePageFunc = old }()
 	analyzePageFunc = func(ctx context.Context, u string) (*model.AnalyzeResult, error) {
-		return nil, service.ErrInvalidURL
+		return nil, analyzer.ErrInvalidURL
 	}
 	body, _ := json.Marshal(map[string]string{"url": ":bad:"})
 	req := httptest.NewRequest(http.MethodPost, "/analyze", bytes.NewReader(body))
@@ -50,7 +50,7 @@ func TestAnalyzeHandler_UpstreamError(t *testing.T) {
 	old := analyzePageFunc
 	defer func() { analyzePageFunc = old }()
 	analyzePageFunc = func(ctx context.Context, u string) (*model.AnalyzeResult, error) {
-		return nil, service.ErrUpstream
+		return nil, analyzer.ErrUpstream
 	}
 	body, _ := json.Marshal(map[string]string{"url": "http://example.com"})
 	req := httptest.NewRequest(http.MethodPost, "/analyze", bytes.NewReader(body))

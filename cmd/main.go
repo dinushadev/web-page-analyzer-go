@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,27 +22,29 @@ func main() {
 	mux := api.NewRouter()
 
 	srv := &http.Server{
-		Addr:    ":8081",
+		Addr:    ":8080",
 		Handler: mux,
 	}
 
 	// Graceful shutdown
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			util.Logger.Error("listen", "error", err)
+			os.Exit(1)
 		}
 	}()
-	log.Println("Server started on :8080")
+	util.Logger.Info("server.started", "addr", ":8080")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	util.Logger.Info("server.shutting_down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		util.Logger.Error("server.shutdown_forced", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Server exiting")
+	util.Logger.Info("server.exiting")
 }
