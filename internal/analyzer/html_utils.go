@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"strconv"
 	"strings"
 	"test-project-go/internal/model"
 
@@ -39,9 +40,13 @@ func countHeadings(n *html.Node) []model.HeadingCount {
 	counts := make(map[int]int)
 	var f func(*html.Node)
 	f = func(n *html.Node) {
-		if n.Type == html.ElementNode && len(n.Data) == 2 && n.Data[0] == 'h' && n.Data[1] >= '1' && n.Data[1] <= '6' {
-			level := int(n.Data[1] - '0')
-			counts[level]++
+		if n.Type == html.ElementNode {
+			tag := strings.ToLower(n.Data)
+			if strings.HasPrefix(tag, "h") {
+				if lvl, err := strconv.Atoi(tag[1:]); err == nil && lvl >= 1 && lvl <= 6 {
+					counts[lvl]++
+				}
+			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)

@@ -3,18 +3,25 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
-	"time"
 	"test-project-go/internal/util"
+	"time"
 )
 
 type responseWriter struct {
 	http.ResponseWriter
 	status int
+	size   int
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	n, err := rw.ResponseWriter.Write(b)
+	rw.size += n
+	return n, err
 }
 
 func Logging(next http.Handler) http.Handler {
@@ -28,6 +35,8 @@ func Logging(next http.Handler) http.Handler {
 			slog.String("path", r.URL.Path),
 			slog.Int("status", rw.status),
 			slog.Duration("duration", duration),
+			slog.Int("size", rw.size),
+			slog.String("request_id", GetReqID(r.Context())),
 		)
 	})
 }
