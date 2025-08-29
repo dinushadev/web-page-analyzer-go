@@ -22,7 +22,6 @@ func main() {
 
 	mux := api.NewRouter()
 
-
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,

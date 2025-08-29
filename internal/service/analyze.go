@@ -2,17 +2,24 @@ package service
 
 import (
 	"errors"
-	"net/http"
+	"log/slog"
 	"net/url"
+	"reflect"
 	"strings"
-	"time"
 	"sync"
+	"test-project-go/internal/model"
+	"test-project-go/internal/util"
 
 	"golang.org/x/net/html"
-	"test-project-go/internal/model"
 )
 
 var ErrUnreachable = errors.New("URL is unreachable")
+
+func logInfo(message string, args ...any) {
+	if util.Logger != nil {
+		util.Logger.Info(message, args...)
+	}
+}
 
 func mergeAnalyzeResult(main, partial *model.AnalyzeResult) {
 	if partial.HTMLVersion != "" {
@@ -33,25 +40,35 @@ func mergeAnalyzeResult(main, partial *model.AnalyzeResult) {
 }
 
 func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
+	logInfo("analyze.start", slog.String("url", targetURL))
 	parsed, err := url.ParseRequestURI(targetURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		logInfo("analyze.invalid_url", slog.String("url", targetURL))
 		return nil, 0, errors.New("invalid URL")
 	}
+	logInfo("analyze.url_parsed", slog.String("host", parsed.Host))
 
 	clientFactory := &DefaultHTTPClientFactory{}
 	client := clientFactory.NewClient()
+	logInfo("http.fetch", slog.String("url", targetURL))
 	resp, err := client.Get(targetURL)
 	if err != nil {
+		logInfo("http.error", slog.String("url", targetURL), slog.String("error", ErrUnreachable.Error()))
 		return nil, 0, ErrUnreachable
 	}
 	defer resp.Body.Close()
+	logInfo("http.response", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		logInfo("http.non_2xx", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
 		return nil, resp.StatusCode, errors.New("HTTP error: " + resp.Status)
 	}
+	logInfo("html.parse.start")
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
+		logInfo("html.parse.error", slog.String("error", "failed to parse HTML"))
 		return nil, 0, errors.New("failed to parse HTML")
 	}
+	logInfo("html.parse.ok")
 
 	strategies := []AnalyzerStrategy{
 		&HTMLVersionStrategy{},
@@ -65,11 +82,14 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 	var mu sync.Mutex
 	errChan := make(chan error, len(strategies))
 
+	logInfo("strategies.start", slog.Int("count", len(strategies)))
 	for _, s := range strategies {
 		wg.Add(1)
 		go func(strategy AnalyzerStrategy) {
 			defer wg.Done()
 			partial := &model.AnalyzeResult{}
+			typeName := reflect.TypeOf(strategy).String()
+			logInfo("strategy.start", slog.String("type", typeName))
 			if err := strategy.Analyze(doc, parsed, partial); err != nil {
 				errChan <- err
 				return
@@ -77,13 +97,31 @@ func AnalyzePage(targetURL string) (*model.AnalyzeResult, int, error) {
 			mu.Lock()
 			mergeAnalyzeResult(result, partial)
 			mu.Unlock()
+			logInfo("strategy.done", slog.String("type", typeName),
+				slog.String("html_version", partial.HTMLVersion),
+				slog.String("title", partial.Title),
+				slog.Bool("login_form", partial.LoginForm),
+				slog.Int("links_internal", partial.Links.Internal),
+				slog.Int("links_external", partial.Links.External),
+				slog.Int("links_inaccessible", partial.Links.Inaccessible),
+			)
 		}(s)
 	}
 	wg.Wait()
+	logInfo("strategies.done")
 	close(errChan)
 	if len(errChan) > 0 {
+		logInfo("analyze.error", slog.String("error", "strategy error"))
 		return nil, 0, <-errChan
 	}
+	logInfo("analyze.done",
+		slog.String("html_version", result.HTMLVersion),
+		slog.String("title", result.Title),
+		slog.Bool("login_form", result.LoginForm),
+		slog.Int("links_internal", result.Links.Internal),
+		slog.Int("links_external", result.Links.External),
+		slog.Int("links_inaccessible", result.Links.Inaccessible),
+	)
 	return result, 0, nil
 }
 
@@ -130,74 +168,99 @@ func countHeadings(n *html.Node) []model.HeadingCount {
 	f(n)
 	var result []model.HeadingCount
 	for i := 1; i <= 6; i++ {
-		if counts[i] > 0 {
-			result = append(result, model.HeadingCount{Level: i, Count: counts[i]})
-		}
+		result = append(result, model.HeadingCount{Level: i, Count: counts[i]})
 	}
 	return result
 }
 
+// countLinks recursively finds and counts links in the HTML node tree.
 func countLinks(n *html.Node, base *url.URL, checker LinkChecker) (internal, external, inaccessible int) {
-	var links []string
+	// A nested recursive function to process nodes.
 	var f func(*html.Node)
 	f = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
+		if n.Type == html.ElementNode {
+			link := ""
+			// Check for href and src attributes in various tags.
 			for _, attr := range n.Attr {
-				if attr.Key == "href" {
-					links = append(links, attr.Val)
+				if attr.Key == "href" || attr.Key == "src" {
+					link = attr.Val
+					break
+				}
+			}
+
+			if link != "" {
+				// Step 1: Parse and validate the link.
+				u, err := url.Parse(link)
+				if err != nil || u.Scheme == "javascript" || u.Scheme == "mailto" {
+					return
+				}
+
+				// Step 2: Resolve to an absolute URL.
+				abs := u
+				if !u.IsAbs() {
+					abs = base.ResolveReference(u)
+				}
+
+				// Step 3: Check for accessibility first.
+				if !checker.IsAccessible(abs.String()) {
+					inaccessible++
+					return // Stop processing this link if it's not accessible.
+				}
+
+				// Step 4: Categorize the link.
+				if abs.Host == base.Host {
+					internal++
+				} else {
+					external++
 				}
 			}
 		}
+
+		// Recurse through the children of the current node.
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
 		}
 	}
+
+	// Start the recursive process from the root node.
 	f(n)
-	for _, l := range links {
-		u, err := url.Parse(l)
-		if err != nil || u.Scheme == "javascript" || u.Scheme == "mailto" {
-			continue
-		}
-		abs := u
-		if !u.IsAbs() {
-			abs = base.ResolveReference(u)
-		}
-		if abs.Host == base.Host {
-			internal++
-		} else {
-			external++
-		}
-		if !checker.IsAccessible(abs.String()) {
-			inaccessible++
-		}
-	}
 	return
 }
 
-func isLinkAccessible(link string) bool {
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Head(link)
-	if err != nil {
-		return false
+// hasLoginForm recursively searches for a login form in the HTML node tree.
+func hasLoginForm(n *html.Node) bool {
+	// First, check if the current node is a form.
+	if n.Type == html.ElementNode && n.Data == "form" {
+		// If it's a form, we'll check its children for a password input.
+		if containsPasswordInput(n) {
+			logInfo("login_form.detected")
+			return true
+		}
 	}
-	resp.Body.Close()
-	return resp.StatusCode >= 200 && resp.StatusCode < 400
+
+	// Now, recursively check the children of the current node.
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if hasLoginForm(c) {
+			return true
+		}
+	}
+	return false
 }
 
-func hasLoginForm(n *html.Node) bool {
-	if n.Type == html.ElementNode && n.Data == "form" {
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if c.Type == html.ElementNode && c.Data == "input" {
-				for _, attr := range c.Attr {
-					if attr.Key == "type" && attr.Val == "password" {
-						return true
-					}
-				}
+// containsPasswordInput recursively checks if a node or its children
+// contain an input field with type="password".
+func containsPasswordInput(n *html.Node) bool {
+	if n.Type == html.ElementNode && n.Data == "input" {
+		for _, attr := range n.Attr {
+			// A case-insensitive check is more robust.
+			if strings.EqualFold(attr.Key, "type") && strings.EqualFold(attr.Val, "password") {
+				return true
 			}
 		}
 	}
+	// Continue the search through the node's children.
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if hasLoginForm(c) {
+		if containsPasswordInput(c) {
 			return true
 		}
 	}

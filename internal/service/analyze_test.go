@@ -30,8 +30,14 @@ func TestCountHeadings(t *testing.T) {
 	h := `<!DOCTYPE html><html><body><h1>H1</h1><h2>H2</h2><h2>H2b</h2></body></html>`
 	doc, _ := html.Parse(strings.NewReader(h))
 	headings := countHeadings(doc)
-	if len(headings) != 2 || headings[0].Level != 1 || headings[0].Count != 1 || headings[1].Level != 2 || headings[1].Count != 2 {
-		t.Errorf("unexpected headings: %+v", headings)
+	if len(headings) != 6 {
+		t.Fatalf("expected 6 heading levels, got %d: %+v", len(headings), headings)
+	}
+	expected := []struct{ level, count int }{{1, 1}, {2, 2}, {3, 0}, {4, 0}, {5, 0}, {6, 0}}
+	for i, e := range expected {
+		if headings[i].Level != e.level || headings[i].Count != e.count {
+			t.Errorf("unexpected h%d count: got %d", e.level, headings[i].Count)
+		}
 	}
 }
 
@@ -60,6 +66,7 @@ func TestAnalyzePage_Unreachable(t *testing.T) {
 
 // Use a mock LinkChecker that always returns true (all links accessible)
 type mockChecker struct{}
+
 func (m *mockChecker) IsAccessible(link string) bool { return true }
 
 func TestCountLinks(t *testing.T) {
