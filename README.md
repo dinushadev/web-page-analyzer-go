@@ -91,3 +91,20 @@ curl -s -X POST http://localhost:8080/analyze \
 - `docs/` — Swagger specs and generated docs
 - `web/` — Static frontend
 
+## Potential improvements
+
+### Performance
+- Bounded per-host concurrency for link checks to avoid overloading single domains.
+- TTL LRU cache for link accessibility and HEAD-not-supported hosts to reduce duplicate upstream calls.
+- Switch some checks to `html.Tokenizer` to avoid full-tree parsing on very large documents.
+- Adaptive timeouts and retry-with-backoff policy for link checks; short deadlines for HEAD, longer for GET fallback.
+
+### Architecture
+- Pass `context.Context` into strategies and `LinkChecker` (`Analyze(ctx, ...)`, `IsAccessible(ctx, ...)`) for true cancellation.
+- Strategy plugin system (DI/registration) with clear interfaces and isolated packages for easier extension/testing.
+- Centralized config (env/flags) for pool sizes, timeouts, limits; injectable via factory to enable per-request overrides.
+- Add tracing (OpenTelemetry) to correlate HTTP fetch, parsing, and each strategy/link-check span across requests.
+
+## Limitations
+- Dynamic sites that build HTML with JavaScript (SPAs) are not fully analyzed. The analyzer fetches the initial HTML only and does not execute JS. To support these sites, add an optional headless rendering step (e.g., chromedp/Playwright) or call an external render service.
+
