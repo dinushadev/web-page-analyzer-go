@@ -1,4 +1,4 @@
-# test-project-go
+# web-analyzer-go
 
 ## Overview
 A simple web page analyzer built with Go. It exposes a REST API and a minimal web UI that accepts a URL and returns:
@@ -40,8 +40,8 @@ go run ./cmd/main.go
 
 2) Docker
 ```sh
-docker build -t test-project-go .
-docker run --rm -p 8080:8080 test-project-go
+docker build -t web-analyzer-go .
+docker run --rm -p 8080:8080 web-analyzer-go
 # App at http://localhost:8080
 ```
 
@@ -81,11 +81,13 @@ curl -s -X POST http://localhost:8080/analyze \
 ## Project Structure
 - `cmd/` — Main entrypoint
 - `internal/api/` — HTTP handlers and router
-- `internal/service/` — Analysis strategies and business logic
+- `internal/service/` — Analysis orchestration and facade
+- `internal/analyzer/` — Analyzer core, strategies, and execution
 - `internal/model/` — DTOs / response models
-- `internal/middleware/` — Request logging middleware
+- `internal/middleware/` — Request ID, recoverer, and structured logging
 - `internal/metrics/` — Metrics integration
-- `internal/util/` — Logging setup
+- `internal/util/` — Logging setup and HTML/link utilities
+- `internal/factory/` — HTTP client and link checker factory
 - `docs/` — Swagger specs and generated docs
 - `web/` — Static frontend
 

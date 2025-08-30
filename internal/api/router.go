@@ -3,10 +3,10 @@ package api
 import (
 	"net/http"
 	_ "net/http/pprof"
-	_ "test-project-go/docs"
-	"test-project-go/internal/metrics"
-	"test-project-go/internal/middleware"
-	"test-project-go/internal/service"
+	_ "web-analyzer-go/docs"
+	"web-analyzer-go/internal/metrics"
+	"web-analyzer-go/internal/middleware"
+	"web-analyzer-go/internal/service"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )

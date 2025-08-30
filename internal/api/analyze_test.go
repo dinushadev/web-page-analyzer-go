@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"test-project-go/internal/analyzer"
-	"test-project-go/internal/model"
+	"web-analyzer-go/internal/analyzer"
+	"web-analyzer-go/internal/model"
 )
 
 func TestAnalyzeHandler_MethodNotAllowed(t *testing.T) {
@@ -52,7 +52,7 @@ func TestAnalyzeHandler_UpstreamError(t *testing.T) {
 	analyzePageFunc = func(ctx context.Context, u string) (*model.AnalyzeResult, error) {
 		return nil, analyzer.ErrUpstream
 	}
-	body, _ := json.Marshal(map[string]string{"url": "http://example.com"})
+	body, _ := json.Marshal(map[string]string{"url": "http://simplewebapp.com"})
 	req := httptest.NewRequest(http.MethodPost, "/analyze", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -68,7 +68,7 @@ func TestAnalyzeHandler_Success(t *testing.T) {
 	analyzePageFunc = func(ctx context.Context, u string) (*model.AnalyzeResult, error) {
 		return &model.AnalyzeResult{Title: "ok"}, nil
 	}
-	body, _ := json.Marshal(map[string]string{"url": "http://example.com"})
+	body, _ := json.Marshal(map[string]string{"url": "http://simplewebapp.com"})
 	req := httptest.NewRequest(http.MethodPost, "/analyze", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()

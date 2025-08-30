@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"test-project-go/internal/analyzer"
+	"web-analyzer-go/internal/analyzer"
 )
 
 var analyzePageFunc = analyzer.AnalyzePage

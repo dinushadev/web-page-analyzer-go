@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const UserAgent = "test-project-go/1.0"
+const UserAgent = "web-analyzer-go/1.0"
 
 type HTTPClientFactory interface {
 	NewClient() *http.Client

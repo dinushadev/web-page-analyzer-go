@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"test-project-go/internal/factory"
-	"test-project-go/internal/model"
 	"testing"
+	"web-analyzer-go/internal/factory"
+	"web-analyzer-go/internal/model"
 
 	"golang.org/x/net/html"
 )
@@ -20,9 +20,9 @@ func Test_parseTargetURL(t *testing.T) {
 		url  string
 		ok   bool
 	}{
-		{"http", "http://example.com", true},
-		{"https", "https://example.com", true},
-		{"invalid scheme", "ftp://example.com", false},
+		{"http", "http://simplewebapp.com", true},
+		{"https", "https://simplewebapp.com", true},
+		{"invalid scheme", "ftp://simplewebapp.com", false},
 		{"garbage", "://", false},
 	}
 	for _, tc := range cases {
@@ -39,7 +39,7 @@ func Test_parseTargetURL(t *testing.T) {
 }
 
 func Test_buildGetRequest_setsUserAgent(t *testing.T) {
-	req, err := buildGetRequest(context.Background(), "http://example.com")
+	req, err := buildGetRequest(context.Background(), "http://simplewebapp.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +85,7 @@ func (s *strategyLogin) Analyze(_ *html.Node, _ *url.URL, r *model.AnalyzeResult
 
 func Test_runStrategiesParallel_merge(t *testing.T) {
 	doc, _ := html.Parse(strings.NewReader("<!DOCTYPE html><html><head><title>X</title></head><body></body></html>"))
-	base, _ := url.Parse("http://example.com")
+	base, _ := url.Parse("http://simplewebapp.com")
 	res, err := runStrategiesParallel(context.Background(), doc, base, []AnalyzerStrategy{&strategyOK{}, &strategyLogin{}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -97,7 +97,7 @@ func Test_runStrategiesParallel_merge(t *testing.T) {
 
 func Test_runStrategiesParallel_error(t *testing.T) {
 	doc, _ := html.Parse(strings.NewReader("<!DOCTYPE html><html><body></body></html>"))
-	base, _ := url.Parse("http://example.com")
+	base, _ := url.Parse("http://simplewebapp.com")
 	_, err := runStrategiesParallel(context.Background(), doc, base, []AnalyzerStrategy{&strategyOK{}, &strategyErr{}})
 	if err == nil {
 		t.Fatalf("expected error from failing strategy")

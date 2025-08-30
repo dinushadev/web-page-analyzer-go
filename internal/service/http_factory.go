@@ -1,7 +1,7 @@
 package service
 
 import (
-	"test-project-go/internal/factory"
+	"web-analyzer-go/internal/factory"
 )
 
 type HTTPClientFactory = factory.HTTPClientFactory

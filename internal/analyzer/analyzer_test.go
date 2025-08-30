@@ -3,8 +3,8 @@ package analyzer
 import (
 	"net/http"
 	"strings"
-	"test-project-go/internal/util"
 	"testing"
+	"web-analyzer-go/internal/util"
 
 	"golang.org/x/net/html"
 )
@@ -79,7 +79,7 @@ func TestCountLinks(t *testing.T) {
 	h := `<!DOCTYPE html><html><body>
 	<a href="/internal">Internal</a>
 	<a href="http://external.com">External</a>
-	<a href="mailto:test@example.com">Mail</a>
+	<a href="mailto:test@simplewebapp.com">Mail</a>
 	</body></html>`
 	base, _ := http.NewRequest("GET", "http://localhost", nil)
 	doc, _ := html.Parse(strings.NewReader(h))

@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"test-project-go/internal/api"
-	"test-project-go/internal/metrics"
-	"test-project-go/internal/util"
+	"web-analyzer-go/internal/api"
+	"web-analyzer-go/internal/metrics"
+	"web-analyzer-go/internal/util"
 
 	_ "net/http/pprof"
 )
@@ -22,7 +22,7 @@ func main() {
 	mux := api.NewRouter()
 
 	srv := &http.Server{
-		Addr:              ":8080",
+		Addr:              ":8081",
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       20 * time.Second,
@@ -39,7 +39,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-	util.Logger.Info("server.started", "addr", ":8081")
+	util.Logger.Info("server.started", "addr", ":8080")
 
 	<-ctx.Done()
 	util.Logger.Info("server.shutting_down")

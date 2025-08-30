@@ -3,7 +3,7 @@ package util
 import (
 	"strconv"
 	"strings"
-	"test-project-go/internal/model"
+	"web-analyzer-go/internal/model"
 
 	"golang.org/x/net/html"
 )

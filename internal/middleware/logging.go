@@ -3,8 +3,8 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
-	"test-project-go/internal/util"
 	"time"
+	"web-analyzer-go/internal/util"
 )
 
 type responseWriter struct {

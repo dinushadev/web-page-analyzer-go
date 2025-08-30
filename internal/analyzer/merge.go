@@ -1,6 +1,6 @@
 package analyzer
 
-import "test-project-go/internal/model"
+import "web-analyzer-go/internal/model"
 
 func mergeAnalyzeResult(main, partial *model.AnalyzeResult) {
 	if partial.HTMLVersion != "" {

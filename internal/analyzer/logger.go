@@ -2,7 +2,7 @@ package analyzer
 
 import (
 	"log/slog"
-	"test-project-go/internal/util"
+	"web-analyzer-go/internal/util"
 )
 
 func logInfo(message string, args ...any) {

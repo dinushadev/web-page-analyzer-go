@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"test-project-go/internal/analyzer"
-	"test-project-go/internal/model"
+	"web-analyzer-go/internal/analyzer"
+	"web-analyzer-go/internal/model"
 )
 
 var (

@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 	"runtime/debug"
-	"test-project-go/internal/util"
+	"web-analyzer-go/internal/util"
 )
 
 func Recover(next http.Handler) http.Handler {

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
-	"test-project-go/internal/factory"
-	"test-project-go/internal/metrics"
-	"test-project-go/internal/model"
 	"time"
+	"web-analyzer-go/internal/factory"
+	"web-analyzer-go/internal/metrics"
+	"web-analyzer-go/internal/model"
 
 	"io"
 

@@ -2,9 +2,9 @@ package analyzer
 
 import (
 	"net/url"
-	"test-project-go/internal/factory"
-	"test-project-go/internal/model"
-	"test-project-go/internal/util"
+	"web-analyzer-go/internal/factory"
+	"web-analyzer-go/internal/model"
+	"web-analyzer-go/internal/util"
 
 	"golang.org/x/net/html"
 )

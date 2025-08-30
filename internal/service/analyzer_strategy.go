@@ -1,7 +1,7 @@
 package service
 
 import (
-	"test-project-go/internal/analyzer"
+	"web-analyzer-go/internal/analyzer"
 )
 
 type AnalyzerStrategy = analyzer.AnalyzerStrategy
