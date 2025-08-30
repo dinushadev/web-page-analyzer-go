@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"sync"
 	"test-project-go/internal/factory"
+	"test-project-go/internal/metrics"
 	"test-project-go/internal/model"
+	"time"
 
 	"golang.org/x/net/html"
 	"golang.org/x/sync/errgroup"
@@ -22,6 +24,7 @@ import (
 // timeouts and cancellation.
 func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, error) {
 	logInfo("analyze.start", slog.String("url", targetURL))
+	start := time.Now()
 
 	parsed, err := parseTargetURL(targetURL)
 	if err != nil {
@@ -52,7 +55,9 @@ func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, e
 		slog.Int("links_internal", result.Links.Internal),
 		slog.Int("links_external", result.Links.External),
 		slog.Int("links_inaccessible", result.Links.Inaccessible),
+		slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 	)
+	metrics.ObserveAnalyzeTotalDuration(time.Since(start))
 	return result, nil
 }
 
@@ -131,12 +136,16 @@ func runStrategiesParallel(ctx context.Context, doc *html.Node, base *url.URL, s
 	var mu sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
+	var slowestName string
+	var slowestDur time.Duration
+
 	logInfo("strategies.start", slog.Int("count", len(strategies)))
 	for _, s := range strategies {
 		strategy := s
 		group.Go(func() error {
 			partial := &model.AnalyzeResult{}
 			strategyType := fmt.Sprintf("%T", strategy)
+			st := time.Now()
 			logInfo("strategy.start", slog.String("type", strategyType))
 			// Strategy interface does not take context; honor cancellation best-effort by early return
 			select {
@@ -148,8 +157,14 @@ func runStrategiesParallel(ctx context.Context, doc *html.Node, base *url.URL, s
 				logError("strategy.error", slog.String("type", strategyType), slog.String("error", err.Error()))
 				return err
 			}
+			d := time.Since(st)
+			metrics.ObserveStrategyDuration(strategyType, d)
 			mu.Lock()
 			mergeAnalyzeResult(result, partial)
+			if d > slowestDur {
+				slowestDur = d
+				slowestName = strategyType
+			}
 			mu.Unlock()
 			logInfo("strategy.done", slog.String("type", strategyType),
 				slog.String("html_version", partial.HTMLVersion),
@@ -158,6 +173,7 @@ func runStrategiesParallel(ctx context.Context, doc *html.Node, base *url.URL, s
 				slog.Int("links_internal", partial.Links.Internal),
 				slog.Int("links_external", partial.Links.External),
 				slog.Int("links_inaccessible", partial.Links.Inaccessible),
+				slog.Int64("duration_ms", d.Milliseconds()),
 			)
 			return nil
 		})
@@ -167,6 +183,6 @@ func runStrategiesParallel(ctx context.Context, doc *html.Node, base *url.URL, s
 		logError("analyze.error", slog.String("error", "strategy error"))
 		return nil, fmt.Errorf("strategy error: %w", err)
 	}
-	logInfo("strategies.done")
+	logInfo("strategies.done", slog.String("slowest_strategy", slowestName), slog.Int64("slowest_ms", slowestDur.Milliseconds()))
 	return result, nil
 }
