@@ -22,8 +22,12 @@ func main() {
 	mux := api.NewRouter()
 
 	srv := &http.Server{
-		Addr:    ":8081",
-		Handler: mux,
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       20 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       90 * time.Second,
 	}
 
 	// Graceful shutdown
@@ -35,7 +39,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-	util.Logger.Info("server.started", "addr", ":8080")
+	util.Logger.Info("server.started", "addr", ":8081")
 
 	<-ctx.Done()
 	util.Logger.Info("server.shutting_down")

@@ -14,6 +14,8 @@ import (
 	"test-project-go/internal/model"
 	"time"
 
+	"io"
+
 	"golang.org/x/net/html"
 	"golang.org/x/sync/errgroup"
 )
@@ -109,7 +111,8 @@ func fetchAndParseHTML(client *http.Client, req *http.Request) (*html.Node, erro
 	}
 
 	logInfo("html.parse.start")
-	doc, parseErr := html.Parse(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, 2<<20) // 2MB cap
+	doc, parseErr := html.Parse(limitedBody)
 	if parseErr != nil {
 		logError("html.parse.error", slog.String("error", ErrParseHTML.Error()))
 		return nil, fmt.Errorf("parse html: %w", ErrParseHTML)

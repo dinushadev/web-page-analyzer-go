@@ -34,6 +34,11 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Limit request body size to 1MB and ensure close
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	defer r.Body.Close()
+
 	var req analyzeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
 		w.Header().Set("Content-Type", "application/json")
