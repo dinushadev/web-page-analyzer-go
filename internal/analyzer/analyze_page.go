@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"test-project-go/internal/factory"
 	"test-project-go/internal/model"
 
 	"golang.org/x/net/html"
@@ -16,7 +17,7 @@ import (
 )
 
 // AnalyzePage fetches the target URL, parses its HTML, and runs a suite of
-// analysis strategies to produce a consolidated \*model.AnalyzeResult. It is
+// analysis strategies to produce a consolidated *model.AnalyzeResult. It is
 // safe for concurrent use and respects the provided context for request-level
 // timeouts and cancellation.
 func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, error) {
@@ -27,7 +28,7 @@ func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, e
 		return nil, err
 	}
 
-	client := (&DefaultHTTPClientFactory{}).NewClient()
+	client := (&factory.DefaultHTTPClientFactory{}).NewClient()
 
 	req, err := buildGetRequest(ctx, targetURL)
 	if err != nil {
@@ -74,7 +75,7 @@ func buildGetRequest(ctx context.Context, targetURL string) (*http.Request, erro
 		logError("http.request_build_failed", slog.String("url", targetURL), slog.String("error", err.Error()))
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", factory.UserAgent)
 	return req, nil
 }
 
@@ -118,7 +119,7 @@ func strategiesFor(client *http.Client) []AnalyzerStrategy {
 		&HTMLVersionStrategy{},
 		&TitleStrategy{},
 		&HeadingsStrategy{},
-		&LinksStrategy{LinkChecker: &DefaultLinkChecker{Client: client}},
+		&LinksStrategy{LinkChecker: &factory.DefaultLinkChecker{Client: client}},
 		&LoginFormStrategy{},
 	}
 }

@@ -1,13 +1,13 @@
 package service
 
 import (
-	"test-project-go/internal/analyzer"
+	"test-project-go/internal/factory"
 )
 
-type HTTPClientFactory = analyzer.HTTPClientFactory
+type HTTPClientFactory = factory.HTTPClientFactory
 
-type DefaultHTTPClientFactory = analyzer.DefaultHTTPClientFactory
+type DefaultHTTPClientFactory = factory.DefaultHTTPClientFactory
 
-type LinkChecker = analyzer.LinkChecker
+type LinkChecker = factory.LinkChecker
 
-type DefaultLinkChecker = analyzer.DefaultLinkChecker
+type DefaultLinkChecker = factory.DefaultLinkChecker

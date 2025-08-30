@@ -1,4 +1,4 @@
-package analyzer
+package util
 
 import (
 	"net/url"
@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func countLinks(n *html.Node, base *url.URL, checker LinkChecker) (internal, external, inaccessible int) {
+func CountLinks(n *html.Node, base *url.URL, isAccessible func(string) bool) (internal, external, inaccessible int) {
 	var f func(*html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.ElementNode {
@@ -26,7 +26,7 @@ func countLinks(n *html.Node, base *url.URL, checker LinkChecker) (internal, ext
 				if !u.IsAbs() {
 					abs = base.ResolveReference(u)
 				}
-				if !checker.IsAccessible(abs.String()) {
+				if !isAccessible(abs.String()) {
 					inaccessible++
 					return
 				}

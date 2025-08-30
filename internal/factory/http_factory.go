@@ -1,4 +1,4 @@
-package analyzer
+package factory
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const userAgent = "test-project-go/1.0"
+const UserAgent = "test-project-go/1.0"
 
 type HTTPClientFactory interface {
 	NewClient() *http.Client
@@ -57,7 +57,7 @@ func (c *DefaultLinkChecker) IsAccessible(link string) bool {
 	// Try HEAD first with User-Agent
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, link, nil)
 	if err == nil {
-		req.Header.Set("User-Agent", userAgent)
+		req.Header.Set("User-Agent", UserAgent)
 		if resp, doErr := c.Client.Do(req); doErr == nil {
 			defer resp.Body.Close()
 			if resp.StatusCode >= 200 && resp.StatusCode < 400 {
@@ -75,7 +75,7 @@ func (c *DefaultLinkChecker) IsAccessible(link string) bool {
 	if err2 != nil {
 		return false
 	}
-	reqGet.Header.Set("User-Agent", userAgent)
+	reqGet.Header.Set("User-Agent", UserAgent)
 	reqGet.Header.Set("Range", "bytes=0-0")
 	respGet, errDo := c.Client.Do(reqGet)
 	if errDo != nil {

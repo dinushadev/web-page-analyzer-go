@@ -1,4 +1,4 @@
-package analyzer
+package util
 
 import (
 	"strings"
@@ -6,22 +6,21 @@ import (
 	"golang.org/x/net/html"
 )
 
-func hasLoginForm(n *html.Node) bool {
+func HasLoginForm(n *html.Node) bool {
 	if n.Type == html.ElementNode && n.Data == "form" {
-		if containsPasswordInput(n) {
-			logInfo("login_form.detected")
+		if ContainsPasswordInput(n) {
 			return true
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if hasLoginForm(c) {
+		if HasLoginForm(c) {
 			return true
 		}
 	}
 	return false
 }
 
-func containsPasswordInput(n *html.Node) bool {
+func ContainsPasswordInput(n *html.Node) bool {
 	if n.Type == html.ElementNode && n.Data == "input" {
 		for _, attr := range n.Attr {
 			if strings.EqualFold(attr.Key, "type") && strings.EqualFold(attr.Val, "password") {
@@ -30,7 +29,7 @@ func containsPasswordInput(n *html.Node) bool {
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if containsPasswordInput(c) {
+		if ContainsPasswordInput(c) {
 			return true
 		}
 	}

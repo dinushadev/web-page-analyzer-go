@@ -2,7 +2,9 @@ package analyzer
 
 import (
 	"net/url"
+	"test-project-go/internal/factory"
 	"test-project-go/internal/model"
+	"test-project-go/internal/util"
 
 	"golang.org/x/net/html"
 )
@@ -14,30 +16,30 @@ type AnalyzerStrategy interface {
 type HTMLVersionStrategy struct{}
 
 func (s *HTMLVersionStrategy) Analyze(doc *html.Node, base *url.URL, result *model.AnalyzeResult) error {
-	result.HTMLVersion = detectHTMLVersion(doc)
+	result.HTMLVersion = util.DetectHTMLVersion(doc)
 	return nil
 }
 
 type TitleStrategy struct{}
 
 func (s *TitleStrategy) Analyze(doc *html.Node, base *url.URL, result *model.AnalyzeResult) error {
-	result.Title = extractTitle(doc)
+	result.Title = util.ExtractTitle(doc)
 	return nil
 }
 
 type HeadingsStrategy struct{}
 
 func (s *HeadingsStrategy) Analyze(doc *html.Node, base *url.URL, result *model.AnalyzeResult) error {
-	result.Headings = countHeadings(doc)
+	result.Headings = util.CountHeadings(doc)
 	return nil
 }
 
 type LinksStrategy struct {
-	LinkChecker LinkChecker
+	LinkChecker factory.LinkChecker
 }
 
 func (s *LinksStrategy) Analyze(doc *html.Node, base *url.URL, result *model.AnalyzeResult) error {
-	internal, external, inaccessible := countLinks(doc, base, s.LinkChecker)
+	internal, external, inaccessible := util.CountLinks(doc, base, s.LinkChecker.IsAccessible)
 	result.Links = model.LinkStats{Internal: internal, External: external, Inaccessible: inaccessible}
 	return nil
 }
@@ -45,6 +47,6 @@ func (s *LinksStrategy) Analyze(doc *html.Node, base *url.URL, result *model.Ana
 type LoginFormStrategy struct{}
 
 func (s *LoginFormStrategy) Analyze(doc *html.Node, base *url.URL, result *model.AnalyzeResult) error {
-	result.LoginForm = hasLoginForm(doc)
+	result.LoginForm = util.HasLoginForm(doc)
 	return nil
 }

@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"testing"
-
+	"test-project-go/internal/factory"
 	"test-project-go/internal/model"
+	"testing"
 
 	"golang.org/x/net/html"
 )
@@ -55,7 +55,7 @@ func Test_fetchAndParseHTML_non2xx(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := (&DefaultHTTPClientFactory{}).NewClient()
+	client := (&factory.DefaultHTTPClientFactory{}).NewClient()
 	req, _ := buildGetRequest(context.Background(), srv.URL)
 	_, err := fetchAndParseHTML(client, req)
 	if err == nil {
@@ -136,7 +136,7 @@ func Test_DefaultLinkChecker_HEAD_200(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	checker := &DefaultLinkChecker{Client: (&DefaultHTTPClientFactory{}).NewClient()}
+	checker := &factory.DefaultLinkChecker{Client: (&factory.DefaultHTTPClientFactory{}).NewClient()}
 	if ok := checker.IsAccessible(srv.URL); !ok {
 		t.Fatalf("expected accessible for HEAD 200")
 	}
@@ -155,7 +155,7 @@ func Test_DefaultLinkChecker_HEAD_405_GET_200(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	checker := &DefaultLinkChecker{Client: (&DefaultHTTPClientFactory{}).NewClient()}
+	checker := &factory.DefaultLinkChecker{Client: (&factory.DefaultHTTPClientFactory{}).NewClient()}
 	if ok := checker.IsAccessible(srv.URL); !ok {
 		t.Fatalf("expected accessible for HEAD 405 then GET 200")
 	}
@@ -174,7 +174,7 @@ func Test_DefaultLinkChecker_HEAD_405_GET_404(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	checker := &DefaultLinkChecker{Client: (&DefaultHTTPClientFactory{}).NewClient()}
+	checker := &factory.DefaultLinkChecker{Client: (&factory.DefaultHTTPClientFactory{}).NewClient()}
 	if ok := checker.IsAccessible(srv.URL); ok {
 		t.Fatalf("expected inaccessible for HEAD 405 then GET 404")
 	}
@@ -190,7 +190,7 @@ func Test_DefaultLinkChecker_HEAD_404(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	checker := &DefaultLinkChecker{Client: (&DefaultHTTPClientFactory{}).NewClient()}
+	checker := &factory.DefaultLinkChecker{Client: (&factory.DefaultHTTPClientFactory{}).NewClient()}
 	if ok := checker.IsAccessible(srv.URL); ok {
 		t.Fatalf("expected inaccessible for HEAD 404")
 	}

@@ -3,6 +3,7 @@ package analyzer
 import (
 	"net/http"
 	"strings"
+	"test-project-go/internal/util"
 	"testing"
 
 	"golang.org/x/net/html"
@@ -11,16 +12,36 @@ import (
 func TestDetectHTMLVersion(t *testing.T) {
 	html5 := `<!DOCTYPE html><html><head><title>Test</title></head><body></body></html>`
 	doc, _ := html.Parse(strings.NewReader(html5))
-	v := detectHTMLVersion(doc)
+	v := util.DetectHTMLVersion(doc)
 	if v != "HTML5" {
 		t.Errorf("expected HTML5, got %s", v)
+	}
+}
+
+func TestDetectHTMLVersion_HTML4(t *testing.T) {
+	html4 := `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+	<html><head><title>Test</title></head><body></body></html>`
+	doc, _ := html.Parse(strings.NewReader(html4))
+	v := util.DetectHTMLVersion(doc)
+	if v != "HTML 4.01 Transitional" {
+		t.Errorf("expected HTML 4.01 Transitional, got %s", v)
+	}
+}
+
+func TestDetectHTMLVersion_HTML2(t *testing.T) {
+	html2 := `<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+	<html><head><title>Test</title></head><body></body></html>`
+	doc, _ := html.Parse(strings.NewReader(html2))
+	v := util.DetectHTMLVersion(doc)
+	if v != "HTML 2.0" {
+		t.Errorf("expected HTML 2.0, got %s", v)
 	}
 }
 
 func TestExtractTitle(t *testing.T) {
 	h := `<!DOCTYPE html><html><head><title>My Page</title></head><body></body></html>`
 	doc, _ := html.Parse(strings.NewReader(h))
-	title := extractTitle(doc)
+	title := util.ExtractTitle(doc)
 	if title != "My Page" {
 		t.Errorf("expected 'My Page', got '%s'", title)
 	}
@@ -29,7 +50,7 @@ func TestExtractTitle(t *testing.T) {
 func TestCountHeadings(t *testing.T) {
 	h := `<!DOCTYPE html><html><body><h1>H1</h1><h2>H2</h2><h2>H2b</h2></body></html>`
 	doc, _ := html.Parse(strings.NewReader(h))
-	headings := countHeadings(doc)
+	headings := util.CountHeadings(doc)
 	if len(headings) != 6 {
 		t.Fatalf("expected 6 heading levels, got %d: %+v", len(headings), headings)
 	}
@@ -44,7 +65,7 @@ func TestCountHeadings(t *testing.T) {
 func TestHasLoginForm(t *testing.T) {
 	h := `<!DOCTYPE html><html><body><form><input type="password"/></form></body></html>`
 	doc, _ := html.Parse(strings.NewReader(h))
-	if !hasLoginForm(doc) {
+	if !util.HasLoginForm(doc) {
 		t.Error("expected login form to be detected")
 	}
 }
@@ -62,7 +83,7 @@ func TestCountLinks(t *testing.T) {
 	</body></html>`
 	base, _ := http.NewRequest("GET", "http://localhost", nil)
 	doc, _ := html.Parse(strings.NewReader(h))
-	internal, external, _ := countLinks(doc, base.URL, &mockChecker{})
+	internal, external, _ := util.CountLinks(doc, base.URL, (&mockChecker{}).IsAccessible)
 	if internal != 1 || external != 1 {
 		t.Errorf("expected 1 internal and 1 external, got %d internal, %d external", internal, external)
 	}
