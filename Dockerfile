@@ -15,4 +15,5 @@ RUN go build -o server ./cmd/main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/server .
+COPY web ./web
 CMD ["./server"]
