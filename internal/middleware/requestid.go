@@ -5,13 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	appErr "web-analyzer-go/internal/errors"
 )
 
 const requestIDHeader = "X-Request-ID"
-
-type ctxKey string
-
-const ctxKeyRequestID ctxKey = "request_id"
 
 func generateRequestID() string {
 	var b [16]byte
@@ -27,17 +24,12 @@ func RequestID(next http.Handler) http.Handler {
 			reqID = generateRequestID()
 		}
 		w.Header().Set(requestIDHeader, reqID)
-		ctx := context.WithValue(r.Context(), ctxKeyRequestID, reqID)
+		ctx := context.WithValue(r.Context(), appErr.RequestIDKey{}, reqID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 // GetReqID returns the request ID from context if present.
 func GetReqID(ctx context.Context) string {
-	if v := ctx.Value(ctxKeyRequestID); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
+	return appErr.GetRequestID(ctx)
 }

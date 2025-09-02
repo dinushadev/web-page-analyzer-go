@@ -2,9 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"web-analyzer-go/internal/analyzer"
+	appErr "web-analyzer-go/internal/errors"
 )
 
 var analyzePageFunc = analyzer.AnalyzePage
@@ -13,6 +13,7 @@ type analyzeRequest struct {
 	URL string `json:"url"`
 }
 
+// errorResponse is deprecated, use appErr.HTTPResponse instead
 type errorResponse struct {
 	Error      string `json:"error"`
 	StatusCode int    `json:"status_code"`
@@ -26,12 +27,12 @@ type errorResponse struct {
 // @Produce json
 // @Param analyzeRequest body analyzeRequest true "URL to analyze"
 // @Success 200 {object} model.AnalyzeResult
-// @Failure 400 {object} errorResponse
-// @Failure 502 {object} errorResponse
+// @Failure 400 {object} errors.HTTPResponse
+// @Failure 502 {object} errors.HTTPResponse
 // @Router /analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		appErr.HTTPErrorHandler(w, r, appErr.NewMethodNotAllowedError([]string{http.MethodPost}))
 		return
 	}
 
@@ -40,26 +41,17 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req analyzeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(errorResponse{Error: "Invalid request body", StatusCode: http.StatusBadRequest})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		appErr.HTTPErrorHandler(w, r, appErr.NewBadRequestError("Invalid request body", err))
+		return
+	}
+	if req.URL == "" {
+		appErr.HTTPErrorHandler(w, r, appErr.NewValidationError("URL is required"))
 		return
 	}
 	result, err := analyzePageFunc(r.Context(), req.URL)
 	if err != nil {
-		code := http.StatusBadGateway
-		switch {
-		case errors.Is(err, analyzer.ErrInvalidURL):
-			code = http.StatusBadRequest
-		case errors.Is(err, analyzer.ErrUnreachable), errors.Is(err, analyzer.ErrUpstream):
-			code = http.StatusBadGateway
-		case errors.Is(err, analyzer.ErrTimeout):
-			code = http.StatusGatewayTimeout
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(errorResponse{Error: err.Error(), StatusCode: code})
+		appErr.HTTPErrorHandler(w, r, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

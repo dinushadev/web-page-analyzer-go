@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sync"
 	"time"
+	appErr "web-analyzer-go/internal/errors"
 	"web-analyzer-go/internal/factory"
 	"web-analyzer-go/internal/metrics"
 	"web-analyzer-go/internal/model"
@@ -66,9 +67,13 @@ func AnalyzePage(ctx context.Context, targetURL string) (*model.AnalyzeResult, e
 // parseTargetURL validates and parses the provided URL.
 func parseTargetURL(targetURL string) (*url.URL, error) {
 	parsed, err := url.ParseRequestURI(targetURL)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+	if err != nil {
 		logInfo("analyze.invalid_url", slog.String("url", targetURL))
-		return nil, fmt.Errorf("parse url %q: %w", targetURL, ErrInvalidURL)
+		return nil, appErr.NewValidationError("invalid URL format", err.Error())
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		logInfo("analyze.invalid_url", slog.String("url", targetURL))
+		return nil, appErr.NewValidationError("URL must use http or https scheme", fmt.Sprintf("got scheme: %s", parsed.Scheme))
 	}
 	logInfo("analyze.url_parsed", slog.String("host", parsed.Host))
 	return parsed, nil
@@ -80,7 +85,7 @@ func buildGetRequest(ctx context.Context, targetURL string) (*http.Request, erro
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
 		logError("http.request_build_failed", slog.String("url", targetURL), slog.String("error", err.Error()))
-		return nil, fmt.Errorf("build request: %w", err)
+		return nil, appErr.NewInternalError("failed to create HTTP request", err)
 	}
 	req.Header.Set("User-Agent", factory.UserAgent)
 	return req, nil
@@ -92,22 +97,22 @@ func fetchAndParseHTML(client *http.Client, req *http.Request) (*html.Node, erro
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			logError("http.timeout", slog.String("url", req.URL.String()))
-			return nil, fmt.Errorf("get %s: %w", req.URL.String(), ErrTimeout)
+			return nil, appErr.NewTimeoutError(fmt.Sprintf("request to %s", req.URL.String()), err)
 		}
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {
 			logError("http.timeout", slog.String("url", req.URL.String()))
-			return nil, fmt.Errorf("get %s: %w", req.URL.String(), ErrTimeout)
+			return nil, appErr.NewTimeoutError(fmt.Sprintf("request to %s", req.URL.String()), err)
 		}
 		logError("http.error", slog.String("url", req.URL.String()), slog.String("error", ErrUnreachable.Error()))
-		return nil, fmt.Errorf("get %s: %w", req.URL.String(), ErrUnreachable)
+		return nil, appErr.WrapError(err, appErr.ErrorTypeUnavailable, fmt.Sprintf("URL %s is unreachable", req.URL.String()))
 	}
 	defer resp.Body.Close()
 
 	logInfo("http.response", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logError("http.non_2xx", slog.Int("status", resp.StatusCode), slog.String("status_text", resp.Status))
-		return nil, fmt.Errorf("upstream http %d %s: %w", resp.StatusCode, resp.Status, ErrUpstream)
+		return nil, appErr.NewUpstreamError(req.URL.Host, resp.StatusCode, fmt.Errorf("received status: %s", resp.Status))
 	}
 
 	logInfo("html.parse.start")
@@ -115,7 +120,7 @@ func fetchAndParseHTML(client *http.Client, req *http.Request) (*html.Node, erro
 	doc, parseErr := html.Parse(limitedBody)
 	if parseErr != nil {
 		logError("html.parse.error", slog.String("error", ErrParseHTML.Error()))
-		return nil, fmt.Errorf("parse html: %w", ErrParseHTML)
+		return nil, appErr.NewParseError("HTML", parseErr)
 	}
 	logInfo("html.parse.ok")
 	return doc, nil
@@ -184,7 +189,7 @@ func runStrategiesParallel(ctx context.Context, doc *html.Node, base *url.URL, s
 
 	if err := group.Wait(); err != nil {
 		logError("analyze.error", slog.String("error", "strategy error"))
-		return nil, fmt.Errorf("strategy error: %w", err)
+		return nil, appErr.WrapError(err, appErr.ErrorTypeInternal, "analysis strategy failed")
 	}
 	logInfo("strategies.done", slog.String("slowest_strategy", slowestName), slog.Int64("slowest_ms", slowestDur.Milliseconds()))
 	return result, nil

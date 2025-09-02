@@ -1,9 +1,14 @@
 package analyzer
 
-import "errors"
+import (
+	apperrors "web-analyzer-go/internal/errors"
+)
 
-var ErrUnreachable = errors.New("url is unreachable")
-var ErrInvalidURL = errors.New("invalid url")
-var ErrUpstream = errors.New("upstream http error")
-var ErrParseHTML = errors.New("failed to parse html")
-var ErrTimeout = errors.New("upstream timeout")
+// Re-export errors from the centralized error package for backward compatibility
+var (
+	ErrUnreachable = apperrors.ErrUnreachable
+	ErrInvalidURL  = apperrors.ErrInvalidURL
+	ErrUpstream    = apperrors.ErrUpstream
+	ErrParseHTML   = apperrors.ErrParseHTML
+	ErrTimeout     = apperrors.ErrTimeout
+)
