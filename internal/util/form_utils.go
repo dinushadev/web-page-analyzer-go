@@ -35,3 +35,5 @@ func ContainsPasswordInput(n *html.Node) bool {
 	}
 	return false
 }
+
+

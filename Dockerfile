@@ -1,12 +1,18 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
+
 WORKDIR /app
+
+# Copy go mod and sum files first
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Now copy the rest of the source code
 COPY . .
-RUN go mod tidy && go build -o server ./cmd/main.go
+
+RUN go build -o server ./cmd/main.go
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/web ./web
-EXPOSE 8080
-ENTRYPOINT ["./server"]
+COPY --from=builder /app/server .
+CMD ["./server"]
